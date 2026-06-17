@@ -633,6 +633,7 @@ public enum CoordinatorMessage: Sendable, Equatable {
     case prefetchModel(PrefetchModel)
     case desiredModels(DesiredModels)
     case trustStatus(TrustStatus)
+    case goingAway(GoingAway)
 
     public struct InferenceRequest: Sendable, Equatable {
         public var requestId: String
@@ -733,6 +734,16 @@ public enum CoordinatorMessage: Sendable, Equatable {
             self.reason = reason
         }
     }
+
+    /// Coordinator announces a planned restart (graceful shutdown), DAR-327
+    /// Phase 3. On receipt the provider finishes its in-flight work, closes its
+    /// WebSocket, and reconnects with its exponential backoff RESET (no backoff
+    /// sleep) so it lands on the freshly-deployed coordinator near-instantly.
+    /// Type-only on the wire ({"type":"going_away"}); the drain + reconnect
+    /// policy lives entirely on the provider. Mirrors Go protocol.GoingAwayMessage.
+    public struct GoingAway: Sendable, Equatable {
+        public init() {}
+    }
 }
 
 // MARK: - CoordinatorMessage Codable
@@ -747,6 +758,7 @@ extension CoordinatorMessage: Codable {
         case prefetchModel = "prefetch_model"
         case desiredModels = "desired_models"
         case trustStatus = "trust_status"
+        case goingAway = "going_away"
     }
 
     enum CodingKeys: String, CodingKey {
@@ -812,6 +824,10 @@ extension CoordinatorMessage: Codable {
             if !t.reason.isEmpty {
                 try container.encode(t.reason, forKey: .reason)
             }
+
+        case .goingAway:
+            // Type-only: matches Go's GoingAwayMessage ({"type":"going_away"}).
+            try container.encode(TypeValue.goingAway, forKey: .type)
         }
     }
 
@@ -866,6 +882,9 @@ extension CoordinatorMessage: Codable {
                 status: try container.decode(String.self, forKey: .status),
                 reason: try container.decodeIfPresent(String.self, forKey: .reason) ?? ""
             ))
+
+        case .goingAway:
+            self = .goingAway(GoingAway())
         }
     }
 }

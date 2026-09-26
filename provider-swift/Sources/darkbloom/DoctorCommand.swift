@@ -458,4 +458,3 @@ func describeMDMEnrollment(_ state: MDMEnrollmentState) -> String {
     case .checkFailed: return "unknown (profiles tool failed)"
     }
 }
-

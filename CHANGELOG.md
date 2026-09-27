@@ -2,11 +2,18 @@
 
 ## Unreleased
 
+- Confirm live model-switch success only after a same-session coordinator receipt proves routing resumed with refreshed capacity. Report a missing receipt as unconfirmed. Serialize autoupdate config changes with model-selection writes so toggling updates cannot restore stale hosted models.
+- Restore model prefetching before the switch readiness receipt can trigger a refreshed desired-build snapshot. Keep scheduled serving within its original window when model validation and hashing take time.
 - Add explicit model-cache selection through `darkbloom models location`, with interactive confirmation, read-only `--check`, one-time `--from-env` import, and `--reset` to the legacy default. No beta flag, automatic restart, or weight movement.
 - Preserve existing providers' cache locations until an operator explicitly saves a path. Ambient Hugging Face/XDG variables never redirect runtime discovery, downloads, hashing, or removal; imported paths stay pinned when the environment changes.
 - Preserve filesystem traversal through symlinks and diagnose empty selected caches without mistaking incomplete download folders for models. See the [location command](docs/provider/cli-reference.md#darkbloom-models-location).
 
 - Replace provider reputation ratings with total, successful, and failed job counts. Remove the composite score calculation and owner API field; historical job failures no longer imply reduced routing priority in the dashboard.
+- Add `darkbloom switch` to replace the running provider's hosted model selection after a graceful drain, without process restart, coordinator reconnect or re-attestation. Reuse the catalog picker, reject invalid selections as a whole, preserve accepted work on timeout, and persist confirmed selections for launchd restart, watchdog recovery and subsequent scheduled serving windows.
+- Live model switching preserves owner-only off-catalog inventory, handles an already-idle `--timeout 0` without skipping coordinator settlement, and lets shutdown preempt read-only weight verification. Switch requests are consumed once across schedule windows; replacement start saves configuration before draining or stopping the current provider.
+- Restore the exact prior model-selection config when replacement-start setup fails, without racing other config writers. Carry validation fingerprints with switched model hashes so unchanged cold models avoid redundant hashing; metadata changes and mandatory fresh integrity checks still rehash.
+- Keep model-switch routing fenced until the provider reopens local admission and confirms readiness after its commit acknowledgement. Settle queued writer reservations and coalesce overlapping drain barriers without dropping the latest waiter. Refresh desired alias builds after replacement. Live rollback preserves absent selection keys and concurrent settings; missing custom configs use their resolved startup settings rather than another config file.
+- Resume model-switch routing only after refreshed serving capacity arrives; retain removed-model queue cleanup through same-session retries. Scheduled windows resolve an empty saved model list as all eligible local models.
 
 ### Public model demand
 
@@ -47,6 +54,7 @@
 
 ## Release candidate v0.9.9 — App Attest recovery and snapshot accuracy (not shipped; 2026-09-22)
 
+- Add `darkbloom switch` to replace the running provider's hosted model selection after a graceful drain, without process restart, coordinator reconnect or re-attestation. Reuse the catalog picker, reject invalid selections as a whole, preserve accepted work on timeout, and persist confirmed selections for launchd restart, watchdog recovery and subsequent scheduled serving windows.
 - Distinguish signed-app availability failures and synthetic Apple callback/proof errors with closed, privacy-bounded diagnostics. Keep the result and trust policy unchanged; native `NSError` codes remain separate.
 - Align `ProviderCore.version` and the coordinator display fallback at 0.9.9. Deploy coordinator and console fixes before publishing the separately qualified signed provider.
 - Retire failed or interrupted one-time App Attest enrollment keys instead of retrying them indefinitely. Preserve server-unavailable retries, cached enrollment proofs, accepted assertion credentials, account identity, and persisted generation limits.

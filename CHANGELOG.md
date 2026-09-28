@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — provider readiness diagnostics
+
+- Explain cold model-load memory failures in `darkbloom status`, a color-coded `darkbloom doctor` readiness summary, and the owner My Macs page. The provider reports live no-eviction usable memory and serving headroom separately from the eviction-aware routing capacity; older providers remain compatible and show unknown rather than a guessed verdict.
+
 ## Release candidate v0.9.12 — model download cache recovery (not shipped; 2026-09-27)
 
 - Recover downloads and background prefetch when a model cache entry is a dangling symlink, including links to unavailable external drives. Preserve the original link under a hidden `.models--<id>.unavailable-link-<UUID>` sibling and download into a real directory in the selected cache. Valid directory links and regular files are preserved.

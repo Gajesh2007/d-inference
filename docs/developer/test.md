@@ -1,12 +1,12 @@
 # Test
 
-> Last updated: 2026-09-28 · commit `3d0d9261c`
+> Last updated: 2026-09-29 · commit `a8aa6bb33`
 
 How to run the unit tests for each component, the end-to-end suite that boots a
 real coordinator + Swift provider against ephemeral Postgres, and the docs
 lint — and which CI workflow runs what. `make test` runs every unit suite plus
 the docs lint locally; CI runs a subset per pull request (see the CI workflow
-map: the benchmark-wrapper tests run only locally). The e2e suite needs an Apple Silicon
+map: the Gemma benchmark-wrapper tests run only locally). The e2e suite needs an Apple Silicon
 Mac with the test checkpoints cached.
 
 The Nemotron coordinator-serving path uses typed SDK events. `OpenAIServiceTests`
@@ -263,9 +263,37 @@ suite covers accepted counter deltas, stale/replayed observations, shared
 service admission, warm-load ownership and transport freshness.
 
 `make benchmark-wrapper-test` also runs the offline serving-profile evaluator
-regressions. For real hardware coverage and required evidence, follow
+regressions. Release Integrity CI runs this same `serving_performance` suite,
+including evidence validation and generated-catalog consistency, without a GPU
+or model downloads. Its SQL fixtures additionally require local PostgreSQL
+binaries and a non-root user; unavailable prerequisites are reported as skips.
+The fixture discovers a complete installation through `PATH`, `pg_config`, or
+Debian's versioned binary directories. It uses `LC_ALL=C`, a private Unix socket
+and an available port. An installed cluster that fails to start fails the test
+with its startup log, rather than being reported as missing coverage.
+Promoted deadline records must also reproduce the archived raw training and
+validation runs and pass the current evaluator with actual prerequisite files;
+schema validity alone is insufficient.
+The evidence index binds every ordered catalog row's ID, qualification-report
+digest and full-profile digest even when the optional archive replay is skipped.
+The current deadline catalog is empty. Historical hardware reports and the
+prompt-count corpus are stored outside the repository; their three replay tests
+run only with `DARKBLOOM_QUALIFICATION_EVIDENCE_ROOT` set. See
+[local evidence checks](serving-performance-qualification.md#verify-local-evidence).
+Ordinary CI still pins the reviewed prompt-count coefficients and checks
+runtime boundaries and synthetic posture failures without those archives.
+For real hardware coverage and required evidence, follow
 [serving performance qualification](serving-performance-qualification.md).
 Synthetic tests never certify M5 concurrency or a mixed-prefill default.
+Calibrated admission adds `DeadlineCalibrationTests`, `PromptWorkTests`, the
+shared calibrated-capacity fixture, and SDK `CBv2CalibratedFirstContentTests`.
+Go and Swift also consume the same synthetic deadline-decision fixture for
+cache reuse, existing-owner bounds, live-rate ceilings and the remaining clock;
+it tests arithmetic agreement and does not qualify hardware.
+`coordinator/api/promptwork` tests body/model memoization, original-clock planner
+bounds and measured shape restrictions. The optional API corpus projection
+uses the production heuristic and writes numeric data only; the qualification
+guide documents its environment variables and paired tokenizer run.
 
 Run `make provider-test` to build tests and install the source-matched Metal
 library beside the runner. Focused suites include `ProviderLifecycleTests`,

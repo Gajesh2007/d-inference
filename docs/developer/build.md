@@ -1,6 +1,6 @@
 # Build
 
-> Last updated: 2026-09-28 · commit `3d0d9261c`
+> Last updated: 2026-09-29 · commit `a8aa6bb33`
 
 How to build every component of Darkbloom from a fresh clone: the Go
 coordinator, the Rust prompt-contract sidecar, the Swift provider CLI (with its
@@ -63,7 +63,19 @@ provider. Initialize the recorded submodules before building, and retain
 source-matched Metal libraries for benchmarks. The
 [profile qualification procedure](serving-performance-qualification.md)
 records the exact model/runtime/backend/hardware identity; a successful build
-alone does not qualify a wider serving limit.
+alone does not qualify a wider serving limit. Use
+`python3 scripts/build-serving-qualification.py --output /tmp/qualification-build`
+after committing the candidate. This cleans prior products, selects the dedicated
+`ServingQualificationTests` target with release optimization and `-enable-testing`,
+stages its source-matched Metal library, and runs the actual executable-identity
+test. The ordinary package graph still includes all unit tests. Pass the generated
+`build-receipt.json` to `scripts/run-serving-qualification.py --build-receipt`;
+the runner verifies the source, binary and metallib binding before collecting
+model/runtime evidence. Neither command installs a provider. Release Integrity
+CI runs the offline `scripts/serving_performance/` tests without building Swift
+or downloading weights; hardware qualification still requires the managed build.
+Archived raw-corpus replay is opt-in; see the
+[local evidence checks](serving-performance-qualification.md#verify-local-evidence).
 
 The release pipeline runs optimized products and SDK qualification on separate
 `xcode-27-xlarge` runners. Both call `.github/actions/provider-release-build/action.yml`;
@@ -639,7 +651,7 @@ local stub servers; its default observation mode sends only public GETs.
 | `provider-build` | `swift build` + `scripts/fetch-metallib.sh <bin-path>` |
 | `provider-test` | `swift build --build-tests`, stage `mlx.metallib` into the bin dir and every `*PackageTests.xctest/Contents/MacOS`, then `swift test --skip-build` |
 | `provider` | `provider-build` + `provider-test` |
-| `benchmark-wrapper-test` | `cd scripts && python3 -m unittest discover -s gemma_contbatch/tests -t .` |
+| `benchmark-wrapper-test` | Python unittest discovery for `gemma_contbatch/tests` and `serving_performance` from `scripts/` |
 | `benchmark-gemma-contbatch` | `python3 scripts/benchmark-gemma-contbatch.py $(GEMMA_BENCHMARK_ARGS)` (needs GPU + weights) |
 | `ui-install` / `ui-lint` / `ui-test` / `ui-build` / `ui` | `npm install` / `npx eslint src/` / `npm test` / `npm run build` in `console-ui/` |
 | `e2e-integration` | `go test ./e2e/... -run TestIntegration -v` |

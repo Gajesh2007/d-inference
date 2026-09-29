@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — cache routing state persistence
+
+- Preserve a write-behind copy of SSD cache holders and observed demand across coordinator restarts while routing reads stay in memory. Restore is bounded by TTL, index caps, clock-skew checks and the cache-key generation; holders bind only to matching live provider capabilities, retaining measured stage-cost deadlines. Disconnects park holders, and shutdown joins provider sockets and the periodic writer before the final bounded flush. No prompts, raw chain hashes or memory-tier holders are persisted.
+- Keep revisioned mutations pending until database acknowledgement. One serialized writer snapshots without draining; each successful chunk clears only matching revisions, and failures leave unwritten changes pending. The refactor adds no store schema, wire fields or configuration knobs.
+- Durably invalidate validated misses and shorter-hit boundaries even before a holder is restored. For overlapping sessions sharing a durable row, only strictly newer surviving evidence can retain it; otherwise delete the durable copy conservatively while older live holders remain usable until expiry or ordinary invalidation.
+- Replace an overflowing holder backlog in O(1), wake the writer and interrupt its batch for a durable reset. Retain a process-lifetime cutoff rejecting older or equal delayed receipts, restored rows and parked rows; reset demand-write deduplication too. A durable marker lets the next boot finish an interrupted reset, but crashes before that marker and concurrent coordinator writers remain limitations.
+- `EIGENINFERENCE_CACHE_ROUTING_PERSIST=false` disables persistence. `GET /v1/cache/status` exposes restore and write-behind health under `lifecycle.persistence`; see [counter semantics](docs/reference/api-contracts.md#exact-cache-status) and [restart precautions](docs/operations/cache-routing-rollout.md#persistence-during-restarts).
+
 ## Unreleased — native MiMo V2.6 candidate (not qualified or deployed)
 
 - Preserve valid QuickTime PCM tracks in memory-backed audiovisual ingress by pinning the SDK's validated-container URL suffix correction. Input bytes, audio samples, memory ownership and decoder limits are unchanged.

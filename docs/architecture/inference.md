@@ -692,6 +692,29 @@ lifecycle/API qualification are separate gates; a helper or component result
 does not certify them. `input_audio` remains excluded from text-only cache
 planning and is not treated as vision.
 
+MiMo encoded audio accepts RIFF/WAVE integer PCM8/16/24/32 and IEEE Float32,
+mono or stereo, at 8–192 kHz. The transport decoder converts interleaved samples
+to planar Float channels and preserves the source rate; the existing native
+frontend resamples each channel to 24 kHz before averaging channels. PCM8 is
+unsigned and centered at 128. Float32 signed zero and finite values are preserved.
+Byte, frame, channel, sample-rate and working-memory limits are checked before
+allocation. Provider admission counts every channel's decoded samples and
+bounds the possible 8-to-24-kHz expansion; the native plan charges the actual
+resampling geometry. MP3/compressed audio and WAVE_FORMAT_EXTENSIBLE are not
+accepted by this WAV path. A single AAC track in MP4/MOV is decompressed to
+bounded Float PCM at its source rate/channels by `MiMoV26EncodedAACAudio`; the
+native frontend then resamples and mixes. The decoder honors one container trim,
+including AAC priming, and validates contiguous output timing and the complete
+presented sample count. Multiple tracks, gaps and retiming remain refused.
+
+MiMo accepts the Boolean `chat_template_kwargs.thinking` alias used by OpenRouter.
+`reasoning.enabled` takes precedence, followed by top-level `enable_thinking`,
+kwargs `enable_thinking`, then kwargs `thinking`. Every supplied value is type
+checked, including shadowed aliases. `MiMoV26TemplateFix` and the coordinator's
+`mimo_v26::additional_context` implement the same normalization. Existing
+reasoning history remains intact; this alias adds no granular effort or
+reasoning-budget support.
+
 Encoded MiMo visual ingress passes the existing transport ceiling
 `MediaIngest.maxMediaDecodedBytes` to the SDK decoder's `maximumEncodedBytes`.
 `MiMoV26EncodedMediaIngress.decode` enforces the same bounded input contract

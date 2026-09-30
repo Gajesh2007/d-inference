@@ -18,8 +18,26 @@ retry of that old workflow still uses its original source. For an unchanged
 candidate with successful build and SDK qualification, merge the tooling fix
 and use the retained unsigned recovery path below.
 
-The prepared version is **0.9.13**. Its MiMo memory-admission changes are
-collected in [`CHANGELOG.md`](../../CHANGELOG.md). Qualify the signed build
+The prepared version is **0.9.14**. It enables native MiMo text-prefix SSD
+caching by default; the exact model identities and rollback controls are in
+[prefix-cache policy](../architecture/prefix-cache.md#mimo-complete-state).
+Qualify the exact signed build with an ordinary launchd configuration: record a
+cold text request, a useful repeated-prefix donation and an authenticated SSD
+restore, including target/assistant output correctness and memory headroom.
+Verify image, audio and video requests still complete through the joint native
+path without reporting media-prefix reuse. Set `DARKBLOOM_MIMO_COMPLETE_PREFIX=0`
+and rerun the replacement `darkbloom start` flow, preserving the selected models
+and existing start options, then repeat with `DARKBLOOM_PREFIX_CACHE=0`.
+Replacement start drains the old process, rewrites its plist from the current
+shell environment and starts the provider; `darkbloom restart` reuses the saved
+plist and does not apply newly exported variables. Verify each replacement
+provider serves cold, then unset both overrides and repeat replacement start
+to restore the model default. RAM
+retention and experimental paging/rectangular verification stay off for this
+qualification. The source change does not qualify those runtime results.
+
+The MiMo memory/media fixes carried forward from 0.9.13 are collected in
+[`CHANGELOG.md`](../../CHANGELOG.md). Qualify the signed build
 on a 256 GiB host both with MiMo alone and with another model resident:
 confirm a positive usable token budget, successful inference, bounded memory
 pressure, and correct concurrency reduction or load refusal when grants shrink.

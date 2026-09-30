@@ -1,6 +1,6 @@
 # First-content routing
 
-> Last updated: 2026-09-29 · commit `e351f359c`
+> Last updated: 2026-09-29
 
 The coordinator selects providers by expected time to delivered content, with a
 separate conservative forecast for deadline feasibility. The selection policy applies by

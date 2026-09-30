@@ -641,6 +641,35 @@ path installs through strict SDK loading. The target-only benchmark does not
 install this sidecar; its success alone cannot validate ordinary multimodal
 startup (`MiMoV26OrdinaryServingPolicy` and `makeNativeMiMoBundle`).
 
+Managed vision prepares each temporal grid separately and synchronously
+evaluates every transformer block through the existing native-work owner
+(`MiMoV26VisionTower.forwardBounded`, `MiMoV26MultimodalProcessor.admitted`).
+The reservation includes the largest frame/block working set plus all retained
+decoded inputs, patches and features (`MiMoV26VisionWorkingSet.frameBytes`,
+`MiMoV26ManagedVisualCommitment`). It does not multiply peak attention memory
+by the full tower depth or video length. Codec weights, target KV and the
+process OS/activation reserves remain separately enforced.
+
+On the default Metal stream, MiMo's validated 64-wide attention heads use a
+fused kernel. The vision quote counts live projection, rotary, MLP and mask
+buffers without inventing a full per-head score matrix. Other head geometries,
+wider local windows and CPU/custom streams retain the conservative full-score
+quote. The synchronous engine scope keeps quoting and execution together.
+Owned audio preparation also completes every encoder block and RVQ codebook
+step; its scratch quote uses the original padded groups, actual tile length,
+retained mels/features and real causal masks. Codec-load accounting and the
+global activation reserve are separate from these request workspaces.
+After each successful checked evaluation, the native owner retires completed
+scratch-array registrations. It retains the preparation owner and loan until
+the request's real retirement; a failed evaluation retains all fault roots.
+This prevents the ownership registry from keeping every old layer output alive.
+
+A refused media reservation maps to the typed `media_memory_unavailable`
+reason (`MiMoV26EncodedMediaIngress.outwardFailure`). It leaves a healthy text
+engine and its routing budget available. Failed required native completion
+still retains and quarantines the actual owner; it is not reclassified as a
+recoverable media refusal.
+
 ```mermaid
 flowchart LR
   A[Validated source and load permit] --> B[Owned native construction]
@@ -739,10 +768,10 @@ Native preparation also uses the actual pixel working-byte calculation shared
 with `MiMoV26Pixels.prepare`, rather than reserving
 `limits.pixels.maximumWorkingBytes` (a ceiling that can approach physical RAM).
 The maximum actual pixel workload remains charged alongside conservative
-retained decoded/patch/feature amounts. Video attention scores are bounded per
-temporal grid (`gridT * (gridH * gridW)^2 * queryHeads * 16`), matching the
-separate frame attention calls. The lazy graph's full depth multiplier and
-allocator node rounding remain charged.
+retained decoded/patch/feature amounts. Vision work uses the largest temporal
+grid/block workspace, with the fused-kernel or conservative full-score path
+described above; completed frames and layers do not multiply that workspace.
+Allocator node rounding and retained outputs remain charged.
 
 This is application-owned decode accounting, not a claimed bound on private
 AVFoundation codec pools. The same process ledger, system headroom, activation

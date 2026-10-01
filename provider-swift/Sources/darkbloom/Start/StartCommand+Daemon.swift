@@ -24,9 +24,13 @@ extension Start {
         // Offer account linking before the model picker.
         await offerInlineLogin(coordinatorURL: coordinatorURL)
 
+        let enableAutopilot = try resolveAutopilotChoice(config)
         let selectedModelIDs: [String]
 
-        if !model.isEmpty {
+        if enableAutopilot {
+            selectedModelIDs = try await downloadedAutopilotInventory(snapshot: snapshot,
+                coordinatorURL: coordinatorURL, runtimeCapabilities: runtimeCapabilities)
+        } else if !model.isEmpty {
             let known = Set(snapshot.models.map(\.id))
             selectedModelIDs = model.filter {
                 known.contains($0)
@@ -62,7 +66,7 @@ extension Start {
         // picker (never for --model/--all/relaunch), with the CURRENT policy as
         // the Enter default. `--idle-timeout` already answered it in `run()`.
         var idleMinutes = config.backend.idleTimeoutMins
-        if model.isEmpty, !all, idleTimeout == nil {
+        if !enableAutopilot, model.isEmpty, !all, idleTimeout == nil {
             idleMinutes = try promptIdleUnloadPolicy(
                 current: idleMinutes,
                 selectedModelIDs: selectedModelIDs,
@@ -71,20 +75,27 @@ extension Start {
 
         // Resolve selection before closing admission; a cancelled picker never
         // disturbs the existing provider. Keep the update lease through install.
+        try Task.checkCancellation()
         let replacement = try await ServiceDrain.prepare(options: drain, withConfigurationChange: { setup in
-            try ProviderModelSelection.withReplacement(selectedModelIDs, configPath: snapshot.configPath,
-                fallbackConfig: config, body: setup)
+            if enableAutopilot {
+                try setup()
+            } else {
+                try ProviderModelSelection.withReplacement(selectedModelIDs, configPath: snapshot.configPath,
+                    fallbackConfig: config, body: setup)
+            }
         })
         defer { replacement.release() }
-        try await ServiceDrain.stopDrainedProvider()
-        try LaunchAgent.installAndStart(
-            coordinatorURL: coordinatorURL,
-            models: selectedModelIDs,
-            configPath: configPath,
-            localEndpoint: LaunchAgent.LocalEndpointOptions(
-                enabled: localEndpoint, port: port, bind: bind, noAuth: noAuth
+        try await Self.completeDaemonReplacement(autopilot: enableAutopilot, models: selectedModelIDs,
+            configPath: configOptions.config) {
+            try LaunchAgent.installAndStart(
+                coordinatorURL: coordinatorURL,
+                models: selectedModelIDs,
+                configPath: configPath,
+                localEndpoint: LaunchAgent.LocalEndpointOptions(
+                    enabled: localEndpoint, port: port, bind: bind, noAuth: noAuth
+                )
             )
-        )
+        }
 
         // Arm the crash-recovery watchdog (relaunches ~5 min after a crash;
         // `stop` disarms, `auto_restart = false` opts out — including
@@ -116,7 +127,13 @@ extension Start {
         for id in selectedModelIDs {
             print("    \(id)")
         }
-        print("  Memory:  \(IdleUnloadPolicy.describe(minutes: idleMinutes)) — `darkbloom idle` to change")
+        if enableAutopilot {
+            print("  Autopilot: enrolled (Experimental; shadow rollout by default)")
+            print("  Reporting downloaded network models; saved preferences are unchanged.")
+            print("  Enrollment is not activation. Run `darkbloom autopilot status` for the current mode.")
+            print("  Manage: darkbloom autopilot status | pause | disable")
+        }
+        print("  Memory:  \(IdleUnloadPolicy.describe(minutes: idleMinutes)) - `darkbloom idle` to change")
         if localEndpoint {
             let shownURL = "http://\(bind == "0.0.0.0" ? "127.0.0.1" : bind):\(port)/v1"
             print("  Local:   \(shownURL) (unified mode — run `darkbloom local` for the API key)")

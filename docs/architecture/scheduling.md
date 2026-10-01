@@ -87,7 +87,7 @@ service or change a running process's schedule. Flags and presets belong to the
 [CLI reference](../provider/cli-reference.md#darkbloom-schedule); keys belong to
 [configuration](../reference/configuration.md#provider-availability).
 
-`Start.runScheduled` in `provider-swift/Sources/darkbloom/StartCommand+Modes.swift`
+`Start.runScheduled` in `provider-swift/Sources/darkbloom/Start/StartCommand+Modes.swift`
 waits outside availability windows without a `ProviderLoop` or coordinator
 connection. At an opening it resolves and validates the model selection, then
 starts a loop. The existing `ProviderLoop.runStartupPreloadGate` in
@@ -97,7 +97,7 @@ models then, not before the opening. Memory/slot limits and the explicit
 coordinator-driven or request-driven loads. At a close, accepted work drains
 before disconnect and model unloading; the wait between windows continues to
 handle lifecycle commands (`Start.waitOutsideSchedule` in
-`provider-swift/Sources/darkbloom/StartCommand+ScheduledDrain.swift`).
+`provider-swift/Sources/darkbloom/Start/StartCommand+ScheduledDrain.swift`).
 
 ```mermaid
 flowchart LR
@@ -828,7 +828,7 @@ gate. The existing eviction-loop gate sweep handles this cleanup
 | Provider-side slot limit and heartbeat interval | `provider-swift/Sources/ProviderCore/Config/ProviderConfig.swift` — `maxModelSlots`, `heartbeatIntervalSecs` |
 | Availability validation and parsing | `provider-swift/Sources/ProviderCore/Scheduling/ScheduleConfig.swift` (`ScheduleConfig.validate`); `provider-swift/Sources/ProviderCore/Scheduling/Schedule.swift` (`Schedule.from`, `isActive`, `durationUntilInactive`, `durationUntilNextActive`) |
 | Calendar boundaries and window union | `provider-swift/Sources/ProviderCore/Scheduling/ScheduleIntervals.swift` (`Schedule.intervals`, `boundary`, `coversEntireWeek`) |
-| Availability editor and scheduled serving | `provider-swift/Sources/darkbloom/Scheduling/ScheduleCommand.swift` (`AvailabilitySchedule`); `provider-swift/Sources/darkbloom/Scheduling/ScheduleSettings.swift` (`ScheduleSettings.save`); `provider-swift/Sources/darkbloom/StartCommand+Modes.swift` (`Start.runScheduled`) |
+| Availability editor and scheduled serving | `provider-swift/Sources/darkbloom/Scheduling/ScheduleCommand.swift` (`AvailabilitySchedule`); `provider-swift/Sources/darkbloom/Scheduling/ScheduleSettings.swift` (`ScheduleSettings.save`); `provider-swift/Sources/darkbloom/Start/StartCommand+Modes.swift` (`Start.runScheduled`) |
 
 ## Related
 
@@ -860,3 +860,16 @@ measurements before pricing contention. The provider's final atomic check uses
 actual queue/cache state and the original deadline. See
 [first-content routing](first-content-routing.md) for the measured-cell gate and
 fallback behavior; this does not relax activation, KV or context safeguards.
+
+## Experimental selected-model residency
+
+`coordinator/registry/autopilot/planner.go` (`Plan`) adds guarded
+capacity moves for explicitly enrolled providers. The controller splits logical
+work by request shape, prefers positive-benefit additions, protects all donor
+contributions during whole-device transitions, and revalidates at reservation.
+The default shadow rollout computes hypothetical plans without reservations,
+fences or residency commands. Startup opt-in records consent, not active control;
+shadow/waiting consent retains ordinary policy. Only an explicit live rollout
+can activate control. Active/paused providers accept network work only on
+confirmed residents. See [Autopilot](model-autopilot.md) for the
+session/selection lease, floors, quiet unloading and recovery invariants.

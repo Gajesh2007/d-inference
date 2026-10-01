@@ -6,6 +6,12 @@
 - Separate legacy Connect credentials and connected-account webhook verification from Checkout. Current and legacy Checkout events settle atomically without duplicate deposits.
 - Recover verified rejected-transfer refunds atomically, require exact Stripe payout evidence during cutover, and check financial-account funding plus fees before new payout debits. Add a bounded audit tool and explicit, operator-verified historical refund repair.
 
+## Unreleased — Nemotron prompt fidelity
+
+- Preserve function-level `strict` for Nemotron tool prompts and align the pinned Nemotron template's scalar/JSON filters with Transformers. Other model families retain their existing rendering and tool normalization. This repairs prompt fidelity, not all reasoning-off tool-selection failures in Q4.
+- Keep numeric Nemotron values identical between provider rendering and exact-cache planning, including exponent formatting and the SDK's integral-number conversion. Apply non-Nemotron `strict` stripping to native media tool inputs as well as text; pinned metadata-only parity gates cover the reference and numeric edge cases in CI.
+- Advance prompt normalization to v8 and renderer identity to v4 across provider and coordinator, retaining normalization v7 policies. This invalidates prompt-contract/cache identities for all families; regenerate sidecar contracts and allowlists together before rollout. No model weights, sampling defaults, tool-choice policy, or inference kernels change.
+
 ## Unreleased — MiMo SSD prefix-cache hits reuse the prefix
 
 - Fix: every native MiMo V2.6 SSD prefix-cache hit was discarded. The bridge stages a checkpoint under a placeholder engine request ID and mints the real ID just before submit, and the SDK's native import check compared engine IDs, so each staged checkpoint was refused (`unsupportedConsumer`) and the request prefilled its whole prompt again. The pinned mlx-swift-lm binds a stage to its submission receipt instead. On a 256 GiB M3 Ultra, a repeated 6K-token prompt now reaches its first token in 4.5 s instead of 13.1 s, and a 12K-token prompt in 4.6 s instead of 27.3 s, with byte-identical output (MTP off and auto).
@@ -79,6 +85,7 @@
 
 ## Unreleased — CI and contributor workflow
 
+- Explicitly enable SSD caching for the exact-cache E2E development checkpoint and establish repeat demand before expecting a donation. The gate now requires exact cached output, account isolation and recovery to pass; CI no longer ignores its failure.
 - Set up Homebrew in the macOS integration and benchmark workflows with `scripts/setup-macos-homebrew.sh` instead of the `Homebrew/actions/setup-homebrew` action. The organization Actions policy does not allow that action, so both workflows stopped at startup. The script uses an installed `brew` or installs Homebrew from a pinned, checksum-verified installer.
 - Run provider unit, SDK and prompt-parity checks on independent workers with compatible build caches, retaining MiMo fixture preparation and isolated native gates.
 - Separate prerequisite-dependent MiMo qualification from ordinary provider tests, retaining required prepared-fixture checks and explicit qualification gaps. Normalize the rollback test's filesystem identity and synchronize the zombie-stream timing test with the initial cancellation.
@@ -156,6 +163,7 @@
 
 ## Unreleased — coordinator first-content routing
 
+- Read serving-slot metric attribution from the already-selected provider after dispatch, avoiding a redundant registry lock that could delay first content. Keep backup and terminal-fault attribution rules intact.
 - Rank eligible providers by cache-adjusted first-content forecasts by default, prefer credible deadline-feasible choices, and spread near-equal choices by whole-machine service work within a 100-ms band. Preserve physical prompt/output reservations and explicit owner routing.
 - Preserve valid prefill observations through 20,000 tokens/s. Track accepted capacity and observed performance freshness separately; missing or stale evidence stays unknown.
 - Revalidate reservations and retained alternatives against the original request deadline. After two predictive refusals, require fresh feasible evidence; bound quote fanout to two and launch at most one feasible backup.

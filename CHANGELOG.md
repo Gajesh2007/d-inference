@@ -27,6 +27,13 @@
 - Add `darkbloom start --schedule` for optional interactive background setup and `darkbloom schedule` for editing saved settings without starting or stopping the provider. Support saved windows, overnight/weekend presets, custom add/edit/remove, inspection, disabling and custom config paths.
 - Offer preloading at window opening or on-demand loading using the existing startup-preload setting, preserving model selections and idle policy. Reject invalid enabled schedules before serving, merge overlapping/adjacent windows, honor local-calendar DST boundaries and keep full-week availability connected continuously.
 
+## Unreleased — budgeted advisory PR review
+
+- Give PR authors Sonnet feedback before selective Opus/Sol 6.1 depth, reuse unchanged analysis, and debounce follow-up pushes. Show clean results, coverage, cost and saved historical findings in the advisory comment.
+- Reserve shared spending before every provider request; cap normal/deep attempts, PR/day, repository/day and the ten-PR pilot. Preserve partial findings and unknown-cost reservations after failures. Paid scanning defaults to disabled; maintainers can preconfigure activation before merge after state-writer and funding verification.
+- Keep findings citable across large diff fragments and publish a compact history link when the full report exceeds comment capacity.
+
+- Add a manual activation preflight that verifies signed state writes and provider funding without paid model calls or changes to the spending ledger. Support a repository-scoped App writer with short-lived tokens; keep private funding details out of public preflight logs.
 ## Unreleased — self-service bank payout migration
 
 - Add an explicit Global Payouts cutover for all supported bank destinations. Existing Connect users complete their own bank setup; history, earned balances and legacy account references are retained. US bank setup uses local transfers.

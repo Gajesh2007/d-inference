@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -52,7 +51,7 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	windowParam := q.Get("window")
-	since, ok := parseLeaderboardWindow(windowParam)
+	_, ok := parseLeaderboardWindow(windowParam)
 	if !ok {
 		writeJSON(w, http.StatusBadRequest, errorResponse("invalid_request_error",
 			"window must be one of: 24h, 7d, 30d, all"))
@@ -64,13 +63,16 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	cacheKey := fmt.Sprintf("leaderboard:%s:%s:%d", metric, windowParam, limit)
-	if cached, ok := s.readCache.Get(cacheKey); ok {
-		writeCachedJSON(w, cached)
+	ranking, err := s.cachedLeaderboard(r.Context(), metric, windowParam)
+	if err != nil {
+		if r.Context().Err() != nil {
+			return
+		}
+		w.Header().Set("Retry-After", strconv.Itoa(leaderboardRetryAfter(err)))
+		writeJSON(w, http.StatusServiceUnavailable, errorResponse("service_unavailable",
+			"leaderboard is temporarily unavailable"))
 		return
 	}
-
-	rows := s.store.Leaderboard(metric, since, limit)
 
 	type entry struct {
 		Rank                   int    `json:"rank"`
@@ -80,6 +82,10 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		RewardEarningsMicroUSD int64  `json:"reward_earnings_micro_usd"`
 		Tokens                 int64  `json:"tokens"`
 		Jobs                   int64  `json:"jobs"`
+	}
+	rows := ranking.rows
+	if len(rows) > limit {
+		rows = rows[:limit]
 	}
 	entries := make([]entry, 0, len(rows))
 	for i, r := range rows {
@@ -98,14 +104,13 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 		"metric":     metricParam,
 		"window":     windowParamOrDefault(windowParam),
 		"entries":    entries,
-		"updated_at": time.Now().UTC().Format(time.RFC3339),
+		"updated_at": ranking.updatedAt,
 	}
 	body, err := json.Marshal(resp)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, errorResponse("internal_error", "failed to encode response"))
 		return
 	}
-	s.readCache.Set(cacheKey, body, 5*time.Minute)
 	writeCachedJSON(w, body)
 }
 

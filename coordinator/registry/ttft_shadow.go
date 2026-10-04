@@ -173,9 +173,9 @@ func (r *Registry) evaluateTTFTShadowLocked(
 	// here, in the SHADOW path only — ttftMsFromSnapshot (the live cost / ceiling /
 	// bestTTFT input) stays occupancy-free so raising alpha cannot tighten the
 	// live request-local HARD_REJECT ceiling. See occupancyAwareTTFTMsFromSnapshot.
-	estimate := occupancyAwareTTFTMsFromSnapshot(snap, reqPrompt)
+	estimate := snap.shadowTTFT(reqPrompt)
 	deadline := ttftDeadlineMsForPrompt(model, reqPrompt)
-	occ := snapshotOccupancy(snap)
+	occ := snap.occupancy()
 
 	eval := ttftShadowEval{
 		Evaluated: true,
@@ -209,7 +209,7 @@ func (scan CandidateScan) HasLoadedIdleAlternative(winner *Provider) bool {
 		if candidate.provider == nil || candidate.provider.ID == winnerID {
 			continue
 		}
-		if candidate.snapshot.modelLoaded && snapshotOccupancy(&candidate.snapshot) == 0 {
+		if candidate.snapshot.modelLoaded && candidate.snapshot.occupancy() == 0 {
 			return true
 		}
 	}
